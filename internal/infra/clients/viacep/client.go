@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -15,22 +16,6 @@ var (
 	ErrCepNotFound    = errors.New("not_found_error")
 	errResponseDecode = errors.New("response_decode_error")
 )
-
-type APIResponse struct {
-	Cep         string `json:"cep"`
-	Logradouro  string `json:"logradouro"`
-	Complemento string `json:"complemento"`
-	Unidade     string `json:"unidade"`
-	Bairro      string `json:"bairro"`
-	Localidade  string `json:"localidade"`
-	Uf          string `json:"uf"`
-	Estado      string `json:"estado"`
-	Regiao      string `json:"regiao"`
-	Ibge        string `json:"ibge"`
-	Gia         string `json:"gia"`
-	Ddd         string `json:"ddd"`
-	Siafi       string `json:"siafi"`
-}
 
 type Client struct {
 	cli *http.Client
@@ -48,12 +33,28 @@ func (c *Client) FetchLocation(cep string) (response APIResponse, err error) {
 		return response, errors.New("error making viacep request")
 	}
 	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&response)
+	rawResponse, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return response, errResponseDecode
+		err = errResponseDecode
+		return
 	}
-	if resp.StatusCode == http.StatusNotFound {
-		return response, ErrCepNotFound
+	return decodeResponse(rawResponse)
+}
+
+func decodeResponse(raw []byte) (response APIResponse, err error) {
+	var probe map[string]json.RawMessage
+	if err = json.Unmarshal(raw, &probe); err != nil {
+		err = errResponseDecode
+		return
 	}
-	return response, nil
+	if _, ok := probe["erro"]; ok {
+		err = ErrCepNotFound
+		return
+	}
+	if _, ok := probe["localidade"]; ok {
+		if err = json.Unmarshal(raw, &response); err != nil {
+			err = errResponseDecode
+		}
+	}
+	return
 }

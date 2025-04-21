@@ -46,7 +46,7 @@ func (h *Handler) FetchWeather(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
-	var svErr *errors2.Error
+	var svErr errors2.Error
 	if errors.As(err, &svErr) {
 		http.Error(w, svErr.Error(), svErr.StatusCode)
 		slog.Error(svErr.Error(), "status", svErr.StatusCode)

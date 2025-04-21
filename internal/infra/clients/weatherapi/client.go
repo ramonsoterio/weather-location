@@ -53,7 +53,7 @@ func (c *Client) FetchCurrentWeather(cityName string) (resp Response, err error)
 }
 
 func handleError(statusCode int) error {
-	if statusCode == http.StatusNotFound {
+	if statusCode == http.StatusBadRequest {
 		return domain.ErrLocationNotFound
 	}
 	return domain.ErrWeatherInformationNotFound
